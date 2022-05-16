@@ -1,0 +1,34 @@
+﻿<Window x:Class="Sudoku.ParametersDialog"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Sudoku"
+        mc:Ignorable="d"
+        Title="Parameters" Height="220" Width="300" ResizeMode="NoResize">
+    <Grid>
+        <Grid.RowDefinitions>
+            <RowDefinition />
+            <RowDefinition Height="50" />
+        </Grid.RowDefinitions>
+
+        <Grid Grid.Row="0" Margin="5, 0, 5, 0">
+            <Grid.RowDefinitions>
+                <RowDefinition Height="30" />
+                <RowDefinition Height="25" />
+                <RowDefinition Height="30" />
+                <RowDefinition Height="25" />
+            </Grid.RowDefinitions>
+
+            <Label Grid.Row="0">Row Count</Label>
+            <TextBox Name="txtRow" Grid.Row="1" Width="200" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="5, 0, 0, 0" PreviewTextInput="Text_PreviewInput" />
+
+            <Label Grid.Row="2">Column Count</Label>
+            <TextBox Name="txtCol" Grid.Row="3" Width="200" HorizontalAlignment="Left" VerticalContentAlignment="Center" Margin="5, 0, 0, 0" PreviewTextInput="Text_PreviewInput" />
+        </Grid>
+        <StackPanel Grid.Row="1" Orientation="Horizontal" HorizontalAlignment="Right">
+            <Button Name="btnSuccess" Width="100" Margin="0, 0, 5, 0" Foreground="Blue" Click="btnSuccess_Click">Ok</Button>
+            <Button Name="btnCancel" Width="100" Margin="0, 0, 5, 0" Click="btnCancel_Click">Cancel</Button>
+        </StackPanel>
+    </Grid>
+</Window>

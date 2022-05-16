@@ -1,0 +1,34 @@
+﻿<Window x:Class="Sudoku.MainWindow"
+        xmlns="http://schemas.microsoft.com/winfx/2006/xaml/presentation"
+        xmlns:x="http://schemas.microsoft.com/winfx/2006/xaml"
+        xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
+        xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
+        xmlns:local="clr-namespace:Sudoku"
+        mc:Ignorable="d"
+        Title="Sudoku" Height="510" Width="710">
+    <Grid>
+        <Grid.ColumnDefinitions>
+            <ColumnDefinition />
+            <ColumnDefinition Width="200" />
+        </Grid.ColumnDefinitions>
+
+
+        <Border Grid.Column="0" Margin="5" BorderThickness="1">
+            <Grid Name="SudokuGrid"></Grid>
+        </Border>
+
+        <DockPanel Grid.Column="1" Margin="5, 5, 10, 5">
+            <StackPanel DockPanel.Dock="Top">
+                <Button Name="btnStart" Foreground="DarkBlue" Click="btnStart_Click">Start</Button>
+                <Button Name="btnValidate" Foreground="OrangeRed" Margin="0, 5, 0, 0" Click="btnValidate_Click">Validate</Button>
+                <Button Name="btnSolve" Foreground="ForestGreen" Margin="0, 5, 0, 0" Click="btnSolve_Click">Solve</Button>
+                <Button Name="btnClear" Foreground="DimGray" Margin="0, 5, 0, 0" Click="btnClear_Click">Clear</Button>
+            </StackPanel>
+
+            <Button Name="btnParams" DockPanel.Dock="Bottom" Click="btnParams_Click">Parameters</Button>
+
+            <TextBlock Name="txtInfo" FontSize="18" VerticalAlignment="Center" TextAlignment="Center"></TextBlock>
+        </DockPanel>
+        
+    </Grid>
+</Window>
