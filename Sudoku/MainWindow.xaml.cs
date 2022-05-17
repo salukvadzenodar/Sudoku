@@ -303,7 +303,6 @@ namespace Sudoku
                     });
 
                     if (sudoku == null) return;
-                    if (sudoku.Status != Algorithm.Status.Solved) throw new Exception();
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {

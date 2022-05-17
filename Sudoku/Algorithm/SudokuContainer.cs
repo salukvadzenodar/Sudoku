@@ -4,7 +4,7 @@
     {
         public Sudoku Sudoku { get; set; }
 
-        public Sudoku Simplified { get; set; }
+        public Sudoku Next { get; set; }
 
         public int Row { get; set; }
 

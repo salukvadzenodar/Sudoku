@@ -8,79 +8,88 @@ namespace Sudoku.Algorithm
 {
     public static class SudokuSolve
     {
-        private static bool Solve(Stack<SudokuContainer> stack, CancellationToken token, Action<Sudoku> notify)
+        private const string Error_Message = "Invalid Sudoku";
+
+        private static SudokuContainer NewContainer(Sudoku sudoku)
+        {
+            var simplified = sudoku.Simplify();
+
+            if (simplified == null) return null;
+            if (simplified.Solved) return new SudokuContainer { Sudoku = simplified };
+
+            var point = simplified.FindOptimalEmptyPoint();
+            if (point == null) return null;
+
+            var next = simplified.Clone();
+            next[point.Value.row, point.Value.col] = point.Value.possibleValues[0];
+
+            return new SudokuContainer
+            {
+                Sudoku = simplified,
+                Next = next,
+                Row = point.Value.row,
+                Column = point.Value.col,
+                PosibleValues = point.Value.possibleValues,
+                Index = 0
+            };
+        }
+
+        private static SudokuContainer NextContainer(SudokuContainer container)
+        {
+            container.Index++;
+            while (container.Index < container.PosibleValues.Length)
+            {
+                var next = container.Sudoku.Clone();
+                next[container.Row, container.Column] = container.PosibleValues[container.Index];
+
+                var nextContainer = NewContainer(next);
+                if (nextContainer != null) return nextContainer;
+                container.Index++;
+            }
+
+            return null;
+        }
+
+        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku> notify)
         {
             var item = stack.Peek();
-            if (item.Sudoku.Status == Status.Solved) return true;
 
-            if (item.Simplified == null)
+            var container = NewContainer(item.Next);
+            while (container == null)
             {
-                var point = item.Sudoku.FindOptimalEmptyPoint();
-                item.Row = point.Value.row;
-                item.Column = point.Value.col;
+                if (stack.Count == 0) return false;
 
-                var sectionsLeft = item.Sudoku.SectionItemsLeft(item.Sudoku.GetSection(item.Row, item.Column));
-                var rowsLeft = item.Sudoku.RowItemsLeft(item.Column);
-                var columnsLeft = item.Sudoku.ColumnItemsLeft(item.Row);
-
-                item.PosibleValues = sectionsLeft.Intersect(rowsLeft).Intersect(columnsLeft).ToArray();
-                var simplified = item.Sudoku.Clone();
-                simplified[item.Row, item.Column] = item.PosibleValues[0];
-
-                simplified.Solve();
-                item.Simplified = simplified;
+                item = stack.Pop();
+                container = NextContainer(item);
             }
 
-            if (item.Simplified.Status == Status.Solved) return true;
-            if (item.Simplified.Status == Status.InProgress)
+            stack.Push(container);
+            if (notify != null)
             {
-                if (notify != null) notify(item.Simplified);
-                stack.Push(new SudokuContainer
-                {
-                    Sudoku = item.Simplified.Clone()
-                });
-
-                return false;
+                notify(container.Next ?? container.Sudoku);
             }
 
-            if (token.IsCancellationRequested) return false;
-            while (item.Index == item.PosibleValues.Length - 1)
-            {
-                if (token.IsCancellationRequested) return false;
-
-                var peek = stack.Peek();
-                item = (item == peek) ? stack.Pop() : peek;
-            }
-
-            item.Index++;
-            item.Sudoku[item.Row, item.Column] = item.PosibleValues[item.Index];
-
-            var reSimplified = item.Sudoku.Clone();
-            reSimplified.Solve();
-
-            item.Simplified = reSimplified;
-            if (notify != null) notify(item.Simplified);
-
-            return false;
+            return container.Next == null;
         }
 
         public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku> notify = null)
         {
+            var container = NewContainer(sudoku);
+            if (container == null) throw new ValidationException(Error_Message);
+            if (container.Next == null) return container.Sudoku;
+
             var stack = new Stack<SudokuContainer>();
-            stack.Push(new SudokuContainer
-            {
-                Sudoku = sudoku
-            });
+            stack.Push(container);
 
             do
             {
                 if (token.IsCancellationRequested) return null;
-                if (stack.Count == 0) throw new ValidationException("Invalid Sudoku");
+                if (stack.Count == 0) throw new ValidationException(Error_Message);
             }
-            while (!Solve(stack, token,  notify));
+            while (!Solve(stack, notify));
 
             var item = stack.Peek();
-            return item.Simplified.Status == Status.Solved ? item.Simplified : item.Sudoku;
+            return item.Sudoku.Solved ? item.Sudoku : throw new ValidationException(Error_Message);
         }
     }
 }
