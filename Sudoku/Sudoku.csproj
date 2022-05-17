@@ -6,4 +6,8 @@
     <UseWPF>true</UseWPF>
   </PropertyGroup>
 
+  <ItemGroup>
+    <ProjectReference Include="..\Sudoku.Algorithm\Sudoku.Algorithm.csproj" />
+  </ItemGroup>
+
 </Project>

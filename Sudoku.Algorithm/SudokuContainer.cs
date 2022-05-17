@@ -1,6 +1,6 @@
 ﻿namespace Sudoku.Algorithm
 {
-    public class SudokuContainer
+    internal class SudokuContainer
     {
         public Sudoku Sudoku { get; set; }
 
