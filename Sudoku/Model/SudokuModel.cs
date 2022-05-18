@@ -1,17 +1,16 @@
-﻿using System;
-using System.Windows.Controls;
+﻿using System.Windows.Controls;
 using System.Windows.Media;
 
-namespace Sudoku.ViewModel
+namespace Sudoku.Model
 {
-    public class SudokuViewModel
+    public class SudokuModel : NotifyPropertyChanged
     {
         private int rows;
         private int cols;
         private int size;
         private CellModel[,] grid;
 
-        public SudokuViewModel(int rows, int cols)
+        public SudokuModel(int rows, int cols)
         {
             this.rows = rows;
             this.cols = cols;
@@ -20,6 +19,8 @@ namespace Sudoku.ViewModel
             grid = new CellModel[size, size];
         }
 
+        public int Rows => rows;
+        public int Cols => cols;
         public int Size => size;
 
         public int[,] Grid
@@ -42,12 +43,12 @@ namespace Sudoku.ViewModel
 
         public TextBox GetControl(int row, int col)
         {
-            return grid[row, col].Control;
+            return grid[row, col];
         }
 
         public void SetControl(int row, int col, TextBox control)
         {
-            grid[row, col] = new CellModel { Control = control };
+            grid[row, col] = control;
         }
 
         public int? this[int row, int col]
@@ -124,7 +125,7 @@ namespace Sudoku.ViewModel
             return fillCount >= 3 && valid;
         }
 
-        public void Highlite(Brush brush, bool? filled = null)
+        public void SetColor(Brush brush, bool? filled = null)
         {
             for (var row = 0; row < size; row++)
             {
@@ -138,7 +139,7 @@ namespace Sudoku.ViewModel
             }
         }
 
-        public void SetState(bool enabled, bool? filled = null)
+        public void SetEnabled(bool enabled, bool? filled = null)
         {
             for (var row = 0; row < size; row++)
             {
@@ -148,25 +149,6 @@ namespace Sudoku.ViewModel
                     if (filled != null && string.IsNullOrEmpty(control.Text) == filled.Value) continue;
 
                     control.IsEnabled = enabled;
-                }
-            }
-        }
-
-        class CellModel
-        {
-            public TextBox Control { get; set; }
-
-            public int? Value
-            {
-                get
-                {
-                    if (string.IsNullOrEmpty(Control.Text)) return null;
-                    return Convert.ToInt32(Control.Text);
-                }
-
-                set
-                {
-                    Control.Text = value?.ToString() ?? "";
                 }
             }
         }

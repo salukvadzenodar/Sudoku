@@ -50,7 +50,7 @@ namespace Sudoku.Algorithm
             return null;
         }
 
-        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku> notify)
+        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku, int, bool> notify)
         {
             var item = stack.Peek();
 
@@ -61,18 +61,23 @@ namespace Sudoku.Algorithm
 
                 item = stack.Pop();
                 container = NextContainer(item);
+
+                if(container == null && notify != null)
+                {
+                    notify(stack.Peek().Next, stack.Count, true);
+                }
             }
 
             stack.Push(container);
             if (notify != null)
             {
-                notify(container.Next ?? container.Sudoku);
+                notify(container.Next ?? container.Sudoku, stack.Count, false);
             }
 
             return container.Next == null;
         }
 
-        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku> notify = null)
+        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku, int, bool> notify = null)
         {
             var container = NewContainer(sudoku);
             if (container == null) throw new ValidationException(Error_Message);
