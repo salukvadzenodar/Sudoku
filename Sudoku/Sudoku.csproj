@@ -4,7 +4,16 @@
     <OutputType>WinExe</OutputType>
     <TargetFramework>net5.0-windows</TargetFramework>
     <UseWPF>true</UseWPF>
+    <ApplicationIcon>Sudoku.ico</ApplicationIcon>
   </PropertyGroup>
+
+  <ItemGroup>
+    <None Remove="Sudoku.ico" />
+  </ItemGroup>
+
+  <ItemGroup>
+    <Resource Include="Sudoku.ico" />
+  </ItemGroup>
 
   <ItemGroup>
     <ProjectReference Include="..\Sudoku.Algorithm\Sudoku.Algorithm.csproj" />
