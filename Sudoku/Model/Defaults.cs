@@ -6,7 +6,7 @@ namespace Sudoku.Model
     {
         public const int Row_Count = 3;
         public const int Cell_Count = 3;
-        public const int Cell_Size = 55;
+        public const int Cell_Size = 50;
 
         public static readonly string Start_Content = "Start";
         public static readonly string Stop_Content = "Stop";

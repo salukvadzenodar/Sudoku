@@ -14,7 +14,8 @@ namespace Sudoku
     {
         private MainViewModel model;
         private CancellationTokenSource cancelationSource;
-        private int cellSize = Defaults.Cell_Size;
+        private double cellWidth = Defaults.Cell_Size;
+        private double cellHeight = Defaults.Cell_Size;
 
         public MainWindow()
         {
@@ -28,16 +29,23 @@ namespace Sudoku
             cancelationSource = null;
             DataContext = model;
 
-            SetWindowSize(cellSize);
+            SetWindowSize();
             CreateMainGrid();
         }
 
-        private void SetWindowSize(int cellSize)
+        private void SetCurrentDimensions()
         {
-            var blockSize = model.Rows * model.Cols * cellSize;
+            var width = Width - 200 - 10;
+            var height = Height - 10;
 
-            Width = blockSize + 10 + 200;
-            Height = blockSize + 10;
+            cellWidth = width / model.Size;
+            cellHeight = height / model.Size;
+        }
+
+        private void SetWindowSize()
+        {
+            Width = model.Size * cellWidth + 10 + 200;
+            Height = model.Size * cellHeight + 10;
         }
 
         private void CreateMainGrid()
@@ -160,158 +168,134 @@ namespace Sudoku
 
         private void btnStart_Click(object sender, RoutedEventArgs e)
         {
-            if (model.State == MainViewState.Started)
+            if (model.State == MainViewState.Started || model.State == MainViewState.Solving)
             {
                 model.State = MainViewState.Stopped;
+
+                if (cancelationSource != null)
+                {
+                    cancelationSource.Cancel();
+                    cancelationSource = null;
+                }
+
+                return;
             }
             else
             {
+                if (!model.Validate())
+                {
+                    model.SetText(Defaults.Invalid_Text, Defaults.Text_Danger_Color);
+                    return;
+                }
+
                 model.State = MainViewState.Started;
+                model.SetText("");
             }
-
-
-            //var button = sender as Button;
-            //if (button.Content.ToString() == "Stop")
-            //{
-            //    button.Content = "Start";
-            //    model.SetState(true);
-            //    model.SetColor(Text_Color);
-
-            //    if (cancelationSource != null)
-            //    {
-            //        cancelationSource.Cancel();
-            //        cancelationSource = null;
-            //        SettButtonState(true);
-            //    }
-
-            //    return;
-            //}
-
-            //txtInfo.Text = "";
-            //if (!model.Validate(Text_Danger_Color))
-            //{
-            //    txtInfo.Text = Invalid_Text;
-            //    txtInfo.Foreground = Text_Danger_Color;
-            //    return;
-            //}
-
-            //button.Content = "Stop";
-
-            //model.SetState(false, true);
-            //model.SetColor(Text_Success_Color, true);
         }
 
         private void btnValidate_Click(object sender, RoutedEventArgs e)
         {
-            //if (!model.Validate(Text_Danger_Color))
-            //{
-            //    txtInfo.Text = Invalid_Text;
-            //    txtInfo.Foreground = Text_Danger_Color;
-            //    return;
-            //}
+            if (!model.Validate())
+            {
+                model.SetText(Defaults.Invalid_Text, Defaults.Text_Danger_Color);
+                return;
+            }
 
-            //txtInfo.Text = Valid_Text;
-            //txtInfo.Foreground = Text_Success_Color;
+            model.SetText(Defaults.Valid_Text, Defaults.Text_Success_Color);
         }
 
         private void btnClear_Click(object sender, RoutedEventArgs e)
         {
-            //if (MessageBox.Show("Please Confirm", "Clear", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
-            //{
-            //    Initialize();
-            //}
+            if (MessageBox.Show("Please Confirm", "Clear", MessageBoxButton.YesNo) == MessageBoxResult.Yes)
+            {
+                var rows = model.Rows;
+                var cols = model.Cols;
+
+                SetCurrentDimensions();
+                Initialize(rows, cols);
+            }
         }
 
         private void btnParams_Click(object sender, RoutedEventArgs e)
         {
-            //var paramsDialog = new ParametersDialog(Rows, Cols);
-            //if (paramsDialog.ShowDialog() != true) return;
+            var paramsDialog = new ParametersDialog(model.Rows, model.Cols);
+            if (paramsDialog.ShowDialog() != true) return;
 
-            //Rows = paramsDialog.Rows;
-            //Cols = paramsDialog.Cols;
-            //Initialize();
+            var rows = paramsDialog.Rows;
+            var cols = paramsDialog.Cols;
+
+            SetCurrentDimensions();
+            Initialize(rows, cols);
         }
 
         private void btnSolve_Click(object sender, RoutedEventArgs e)
         {
-            //    txtInfo.Text = "";
-            //    if (!model.Validate(Text_Danger_Color))
-            //    {
-            //        txtInfo.Text = Invalid_Text;
-            //        txtInfo.Foreground = Text_Danger_Color;
-            //        return;
-            //    }
+            if (!model.Validate())
+            {
+                model.SetText(Defaults.Invalid_Text, Defaults.Text_Danger_Color);
+                return;
+            }
 
-            //    SettButtonState(false);
-            //    model.SetState(false);
-            //    model.SetColor(Text_Success_Color, true);
-            //    btnStart.Content = "Stop";
-            //    btnStart.IsEnabled = true;
+            model.State = MainViewState.Solving;
 
-            //    var initialSudoku = new Algorithm.Sudoku(Rows, Cols);
-            //    for (var i = 0; i < model.Size; i++)
-            //    {
-            //        for (var j = 0; j < model.Size; j++)
-            //        {
-            //            initialSudoku[i, j] = model[i, j] ?? 0;
-            //        }
-            //    }
+            var initialSudoku = new Algorithm.Sudoku(model.Rows, model.Cols);
+            for (var i = 0; i < model.Size; i++)
+            {
+                for (var j = 0; j < model.Size; j++)
+                {
+                    initialSudoku[i, j] = model[i, j] ?? 0;
+                }
+            }
 
-            //    cancelationSource = new CancellationTokenSource();
-            //    var token = cancelationSource.Token;
+            cancelationSource = new CancellationTokenSource();
+            var token = cancelationSource.Token;
 
-            //    void ShowSudoku(Algorithm.Sudoku sudoku)
-            //    {
-            //        for (var i = 0; i < sudoku.Size; i++)
-            //        {
-            //            for (var j = 0; j < sudoku.Size; j++)
-            //            {
-            //                var value = sudoku[i, j];
-            //                model[i, j] = value == 0 ? null : (int?)value;
-            //            }
-            //        }
-            //    }
+            void ShowSudoku(Algorithm.Sudoku sudoku)
+            {
+                for (var i = 0; i < sudoku.Size; i++)
+                {
+                    for (var j = 0; j < sudoku.Size; j++)
+                    {
+                        var value = sudoku[i, j];
+                        model[i, j] = value == 0 ? null : (int?)value;
+                    }
+                }
+            }
 
-            //    Task.Factory.StartNew((_) =>
-            //    {
-            //        try
-            //        {
-            //            var time = DateTime.Now;
-            //            var sudoku = Algorithm.SudokuSolve.Solve(initialSudoku, token, (s, stackCount, isBack) =>
-            //            {
-            //                if (DateTime.Now.Subtract(time).TotalSeconds < 1 || token.IsCancellationRequested) return;
-            //                time = DateTime.Now;
+            Task.Factory.StartNew((_) =>
+            {
+                try
+                {
+                    var time = DateTime.Now;
+                    var sudoku = Algorithm.SudokuSolve.Solve(initialSudoku, token, (s, stackCount, isBack) =>
+                    {
+                        if (DateTime.Now.Subtract(time).TotalSeconds < 1 || token.IsCancellationRequested) return;
+                        time = DateTime.Now;
 
-            //                Application.Current.Dispatcher.Invoke(() =>
-            //                {
-            //                    ShowSudoku(s);
-            //                });
-            //            });
+                        Application.Current.Dispatcher.Invoke(() =>
+                        {
+                            ShowSudoku(s);
+                        });
+                    });
 
-            //            if (sudoku == null) return;
+                    if (sudoku == null) return;
 
-            //            Application.Current.Dispatcher.Invoke(() =>
-            //            {
-            //                txtInfo.Text = "Solved";
-            //                txtInfo.Foreground = Text_Success_Color;
-            //                btnStart.IsEnabled = false;
-            //                btnClear.IsEnabled = true;
-            //                btnParams.IsEnabled = true;
-            //                ShowSudoku(sudoku);
-            //            });
-            //        }
-            //        catch
-            //        {
-            //            Application.Current.Dispatcher.Invoke(() =>
-            //            {
-            //                SettButtonState(true);
-            //                btnStart_Click(btnStart, new RoutedEventArgs());
-
-            //                txtInfo.Text = "Unable To Solve";
-            //                txtInfo.Foreground = Text_Danger_Color;
-            //            });
-            //        }
-            //    }, TaskCreationOptions.LongRunning, token);
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        model.State = MainViewState.Stopped;
+                        model.SetText("Solved", Defaults.Text_Success_Color);
+                        ShowSudoku(sudoku);
+                    });
+                }
+                catch
+                {
+                    Application.Current.Dispatcher.Invoke(() =>
+                    {
+                        model.State = MainViewState.Stopped;
+                        model.SetText("Unable To Solve", Defaults.Text_Danger_Color);
+                    });
+                }
+            }, TaskCreationOptions.LongRunning, token);
         }
     }
 }

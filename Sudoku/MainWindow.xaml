@@ -4,7 +4,7 @@
         xmlns:d="http://schemas.microsoft.com/expression/blend/2008"
         xmlns:mc="http://schemas.openxmlformats.org/markup-compatibility/2006"
         mc:Ignorable="d"
-        Title="Sudoku" Height="510" Width="710">
+        Title="Sudoku" Height="510" Width="710" MinHeight="310" MinWidth="510">
     <Grid>
         <Grid.ColumnDefinitions>
             <ColumnDefinition />

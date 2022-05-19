@@ -100,6 +100,8 @@ namespace Sudoku.Model
             get => state;
             set
             {
+                var wasSolving = state == MainViewState.Solving;
+
                 state = value;
                 void SetDefaultState(bool state)
                 {
@@ -130,7 +132,7 @@ namespace Sudoku.Model
                 else if (state == MainViewState.Stopped)
                 {
                     SetDefaultState(true);
-                    SetColor(Defaults.Text_Color);
+                    if(!wasSolving) SetColor(Defaults.Text_Color);
                     SetEnabled(true);
 
                     StartContent = Defaults.Start_Content;
@@ -153,6 +155,12 @@ namespace Sudoku.Model
         {
             Message = text;
             MessageColor = color;
+        }
+
+        public bool Validate()
+        {
+            SetColor(Defaults.Text_Color);
+            return Validate(Defaults.Text_Danger_Color);
         }
     }
 }
