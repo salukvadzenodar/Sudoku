@@ -1,4 +1,5 @@
-﻿using System.Linq;
+﻿using System.Collections.Generic;
+using System.Linq;
 
 namespace Sudoku.Algorithm
 {
@@ -181,6 +182,46 @@ namespace Sudoku.Algorithm
 
         public Sudoku Simplify()
         {
+            var sudoku = Clone();
+            var possibleValues = new List<int>[Size, Size];
+
+            bool SetValue(int row, int col, int value)
+            {
+                sudoku[row, col] = value;
+                possibleValues[row, col] = null;
+
+                for (int i = 0; i < Size; i++)
+                {
+                    if (possibleValues[i, col] == null) continue;
+
+                    possibleValues[i, col].Remove(value);
+                    if (possibleValues[i, col].Count == 0) return false;
+                }
+
+                for (int i = 0; i < Size; i++)
+                {
+                    if (possibleValues[row, i] == null) continue;
+
+                    possibleValues[row, i].Remove(value);
+                    if (possibleValues[row, i].Count == 0) return false;
+                }
+
+                var section = GetSection(row, col);
+                var point = GetSectionStart(section);
+                for (int i = point.row; i < point.row + Rows; i++)
+                {
+                    for (int j = point.col; j < point.col + Cols; j++)
+                    {
+                        if (possibleValues[i, j] == null) continue;
+
+                        possibleValues[i, j].Remove(value);
+                        if (possibleValues[i, j].Count == 0) return false;
+                    }
+                }
+
+                return true;
+            }
+
             bool Process(Sudoku sudoku)
             {
                 var again = false;
@@ -190,22 +231,34 @@ namespace Sudoku.Algorithm
                     {
                         if (sudoku[i, j] > 0) continue;
 
-                        var possibleValues = PossibleValues(i, j);
-                        if (possibleValues.Length == 0) return false;
-                        if (possibleValues.Length > 1) continue;
+                        var values = possibleValues[i, j];
+                        if (values == null || values.Count == 0) return false;
+                        if (values.Count > 1) continue;
 
-                        sudoku[i, j] = possibleValues[0];
+                        SetValue(i, j, values[0]);
                         again = true;
                     }
                 }
 
-                if(again) return Process(sudoku);
+                if (again) return Process(sudoku);
                 return true;
             }
 
-            var sudoku = Clone();
-            var valid = Process(sudoku);
+            // initialize possible values
+            for (int i = 0; i < Size; i++)
+            {
+                for (int j = 0; j < Size; j++)
+                {
+                    if (sudoku[i, j] > 0) continue;
 
+                    var values = PossibleValues(i, j);
+                    if (values.Length == 0) return null;
+
+                    possibleValues[i, j] = values.ToList();
+                }
+            }
+
+            var valid = Process(sudoku);
             return valid ? sudoku : null;
         }
     }
