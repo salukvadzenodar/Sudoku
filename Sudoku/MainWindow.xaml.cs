@@ -262,28 +262,26 @@ namespace Sudoku
                 }
             }
 
-            Task.Factory.StartNew((_) =>
+            Task.Factory.StartNew(async (_) =>
             {
                 try
                 {
-                    var time = DateTime.Now;
-                    var sudoku = Algorithm.SudokuSolve.Solve(initialSudoku, token, (s, stackCount, isBack) =>
+                    var startTime = DateTime.Now;
+                    var sudoku = await Algorithm.SudokuSolve.SolveAsync(initialSudoku, cancelationSource, (s, stackCount, isBack) =>
                     {
-                        if (DateTime.Now.Subtract(time).TotalSeconds < 1 || token.IsCancellationRequested) return;
-                        time = DateTime.Now;
+                        if (token.IsCancellationRequested) return;
 
                         Application.Current.Dispatcher.Invoke(() =>
                         {
                             ShowSudoku(s);
                         });
                     });
-
                     if (sudoku == null) return;
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {
                         model.State = MainViewState.Stopped;
-                        model.SetText("Solved", Defaults.Text_Success_Color);
+                        model.SetText($"Solved in {DateTime.Now.Subtract(startTime).TotalSeconds.ToString("0")} Seconds", Defaults.Text_Success_Color);
                         ShowSudoku(sudoku);
                     });
                 }

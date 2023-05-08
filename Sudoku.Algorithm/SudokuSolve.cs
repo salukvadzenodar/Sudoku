@@ -1,14 +1,18 @@
 ﻿using System;
 using System.Collections.Generic;
 using System.ComponentModel.DataAnnotations;
+using System.Diagnostics;
 using System.Linq;
 using System.Threading;
+using System.Threading.Tasks;
+using System.Timers;
 
 namespace Sudoku.Algorithm
 {
     public static class SudokuSolve
     {
-        private const string Error_Message = "Invalid Sudoku";
+        private static object lock_obj = new object();
+        private static volatile bool aquired = false;
 
         private static SudokuContainer NewContainer(Sudoku sudoku)
         {
@@ -50,7 +54,7 @@ namespace Sudoku.Algorithm
             return null;
         }
 
-        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku, int, bool> notify)
+        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku, int, bool> notify, long notifyTime, ref DateTime time)
         {
             var item = stack.Peek();
 
@@ -62,39 +66,139 @@ namespace Sudoku.Algorithm
                 item = stack.Pop();
                 container = NextContainer(item);
 
-                if(container == null && notify != null)
+                if (container == null && notify != null && (notifyTime == 0 || DateTime.Now.Subtract(time).TotalMilliseconds > notifyTime))
                 {
+                    time = DateTime.Now;
                     notify(stack.Peek().Next, stack.Count, true);
                 }
             }
 
             stack.Push(container);
-            if (notify != null)
+            if (notify != null && (notifyTime == 0 || DateTime.Now.Subtract(time).TotalMilliseconds > notifyTime))
             {
+                time = DateTime.Now;
                 notify(container.Next ?? container.Sudoku, stack.Count, false);
             }
 
             return container.Next == null;
         }
 
-        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku, int, bool> notify = null)
+        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku, int, bool> notify = null, long notifyTime = 1000)
         {
             var container = NewContainer(sudoku);
-            if (container == null) throw new ValidationException(Error_Message);
+            if (container == null) return null;
             if (container.Next == null) return container.Sudoku;
 
+            var time = DateTime.Now;
             var stack = new Stack<SudokuContainer>();
             stack.Push(container);
 
             do
             {
-                if (token.IsCancellationRequested) return null;
-                if (stack.Count == 0) throw new ValidationException(Error_Message);
+                if (token.IsCancellationRequested || stack.Count == 0) return null;
             }
-            while (!Solve(stack, notify));
+            while (!Solve(stack, notify, notifyTime, ref time));
 
             var item = stack.Peek();
-            return item.Sudoku.Solved ? item.Sudoku : throw new ValidationException(Error_Message);
+            return item.Sudoku.Solved ? item.Sudoku : null;
+        }
+
+        public static async Task<Sudoku> SolveAsync(Sudoku sudoku, CancellationTokenSource tokenSource, Action<Sudoku, int, bool> notify = null, long notifyTime = 1000)
+        {
+            var concurentThreads = Process.GetCurrentProcess().Threads.Count / 2;
+            var tasks = new List<Task<Sudoku>>();
+
+            var timer = new System.Timers.Timer(notifyTime + 100);
+
+            Sudoku notificationobj = null;
+            int count = 0;
+            bool isBack = false;
+            aquired = true;
+
+            Action<Sudoku, int, bool> notifyFn = notify != null ? (s, c, b) =>
+            {
+
+                if (aquired) return;
+                lock (lock_obj)
+                {
+                    if (aquired) return;
+                    aquired = true;
+                }
+
+                notificationobj = s;
+                count = c;
+                isBack = b;
+            } : null;
+
+            sudoku = sudoku.Simplify();
+            if (sudoku == null) return null;
+
+            if (concurentThreads <= 2)
+            {
+                tasks.Add(Task.Factory.StartNew((_) => Solve(sudoku, tokenSource.Token, notifyFn, notifyTime), TaskCreationOptions.LongRunning, tokenSource.Token));
+            }
+            else
+            {
+                var miscellaneous = new List<Sudoku>() { sudoku };
+                while (concurentThreads - 2 > miscellaneous.Count)
+                {
+                    var top = miscellaneous[0];
+                    miscellaneous.RemoveAt(0);
+
+                    var point = top.FindOptimalEmptyPoint();
+                    if (point == null) continue;
+
+                    foreach(var value in point?.possibleValues){
+                        var clone = top.Clone();
+                        clone[point.Value.row, point.Value.col] = value;
+
+                        clone = clone.Simplify();
+                        if (clone == null) continue;
+
+                        miscellaneous.Add(clone);
+                    }
+                }
+
+                miscellaneous.ForEach(s =>
+                {
+                    tasks.Add(Task.Factory.StartNew((_) => Solve(s, tokenSource.Token, notifyFn, notifyTime), TaskCreationOptions.LongRunning, tokenSource.Token));
+                });
+            }
+
+            if(notify != null)
+            {
+                aquired = false;
+                timer.Elapsed += (o, e)=>
+                {
+                    if(tokenSource.Token.IsCancellationRequested || notificationobj == null)
+                    {
+                        timer.Enabled = false;
+                        return;
+                    }
+
+                    notify(notificationobj, count, isBack);
+                    notificationobj = null;
+                    aquired = false;
+                };
+
+                timer.Enabled = true;
+            }
+
+            while (tasks.Any())
+            {
+                if (tokenSource.Token.IsCancellationRequested) return null;
+
+                var finished = await Task.WhenAny(tasks);
+                tasks.Remove(finished);
+
+                var solved = await finished;
+                if (solved == null) continue;
+
+                tokenSource.Cancel();
+                return solved;
+            }
+
+            return null;
         }
     }
 }
