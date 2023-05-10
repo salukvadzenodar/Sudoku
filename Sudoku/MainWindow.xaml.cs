@@ -276,7 +276,8 @@ namespace Sudoku
                             ShowSudoku(s);
                         });
                     });
-                    if (sudoku == null) return;
+
+                    if (sudoku == null) throw new Exception();
 
                     Application.Current.Dispatcher.Invoke(() =>
                     {

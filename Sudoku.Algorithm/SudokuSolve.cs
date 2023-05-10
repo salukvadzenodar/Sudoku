@@ -140,7 +140,7 @@ namespace Sudoku.Algorithm
             else
             {
                 var miscellaneous = new List<Sudoku>() { sudoku };
-                while (concurentThreads - 2 > miscellaneous.Count)
+                while (miscellaneous.Count > 0 && concurentThreads - 2 > miscellaneous.Count)
                 {
                     var top = miscellaneous[0];
                     miscellaneous.RemoveAt(0);
@@ -170,11 +170,12 @@ namespace Sudoku.Algorithm
                 aquired = false;
                 timer.Elapsed += (o, e)=>
                 {
-                    if(tokenSource.Token.IsCancellationRequested || notificationobj == null)
+                    if(tokenSource.Token.IsCancellationRequested)
                     {
                         timer.Enabled = false;
                         return;
                     }
+                    if (notificationobj == null) return;
 
                     notify(notificationobj, count, isBack);
                     notificationobj = null;
@@ -198,6 +199,7 @@ namespace Sudoku.Algorithm
                 return solved;
             }
 
+            tokenSource.Cancel();
             return null;
         }
     }
