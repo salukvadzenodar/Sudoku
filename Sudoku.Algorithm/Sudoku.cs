@@ -9,10 +9,16 @@ namespace Sudoku.Algorithm
         public int Cols { get; private set; }
 
         public int Size => Rows * Cols;
+        public bool IsOptimized => Data != null;
+
+        private AuxilaryData Data { get; set; }
+
         public bool Solved
         {
             get
             {
+                if (Data != null) return Data.Solved;
+
                 for (int i = 0; i < Size; i++)
                 {
                     for (int j = 0; j < Size; j++)
@@ -26,6 +32,7 @@ namespace Sudoku.Algorithm
         }
 
         private int[,] Matrix { get; set; }
+
         public int this[int i, int j]
         {
             get
@@ -34,26 +41,63 @@ namespace Sudoku.Algorithm
             }
             set
             {
+                var valueChanged = Matrix[i, j] != 0 && Matrix[i, j] != value;
                 Matrix[i, j] = value;
+
+                if (Data != null)
+                {
+                    if (!valueChanged)
+                    {
+                        int section = GetSection(i, j);
+                        // row should be removed from col index and column from row index
+                        Data.Remove(j, i, section, value);
+                    }
+                    else
+                    {
+                        BuildData();
+                    }
+                }
             }
         }
 
-        public Sudoku(int rows, int cols)
+        public Sudoku(int rows, int cols, bool optimize = true)
         {
             Rows = rows;
             Cols = cols;
             Matrix = new int[Size, Size];
+
+            if (optimize)
+            {
+                BuildData();
+            }
         }
 
         public Sudoku Clone()
         {
             var sudoku = new Sudoku(Rows, Cols);
+            sudoku.Data = Data?.Clone();
 
             for (var i = 0; i < Size; i++)
                 for (var j = 0; j < Size; j++)
                     sudoku[i, j] = Matrix[i, j];
 
             return sudoku;
+        }
+
+        private void BuildData()
+        {
+            Data = null;
+            var auxilaryData = new AuxilaryData(Size);
+
+            for (var i = 0; i < Size; i++)
+            {
+                auxilaryData.RowPossibleValues[i] = RowPossibleValues(i).ToList();
+                auxilaryData.ColumnPossibleValues[i] = ColumnPossibleValues(i).ToList();
+                auxilaryData.SectionPossibleValues[i] = SectionPossibleValues(i).ToList();
+            }
+
+            auxilaryData.CheckSolved();
+            Data = auxilaryData;
         }
 
         public int GetSection(int row, int column)
@@ -68,8 +112,13 @@ namespace Sudoku.Algorithm
 
         private int[] PossibleValues(bool[] itemsFilled)
         {
-            var count = itemsFilled.Where(x => x).Count();
-            var leftItems = new int[Size - count];
+            var count = 0;
+            for (var i = 0; i < itemsFilled.Length; i++)
+            {
+                if (!itemsFilled[i]) count++;
+            }
+
+            var leftItems = new int[count];
             var index = 0;
 
             for (var i = 0; i < Size; i++)
@@ -79,28 +128,18 @@ namespace Sudoku.Algorithm
                 leftItems[index] = i + 1;
                 index++;
             }
+
             return leftItems;
-        }
-
-        public int[] ColumnPossibleValues(int row)
-        {
-            var temp = new bool[Size];
-
-            for (var i = 0; i < Size; i++)
-            {
-                if (Matrix[row, i] == 0) continue;
-                if (temp[Matrix[row, i] - 1]) return new int[0];
-
-                temp[Matrix[row, i] - 1] = true;
-            }
-
-            return PossibleValues(temp);
         }
 
         public int[] RowPossibleValues(int column)
         {
-            var temp = new bool[Size];
+            if (Data != null)
+            {
+                return Data.RowPossibleValues[column]?.ToArray() ?? new int[0];
+            }
 
+            var temp = new bool[Size];
             for (var i = 0; i < Size; i++)
             {
                 if (Matrix[i, column] == 0) continue;
@@ -112,8 +151,32 @@ namespace Sudoku.Algorithm
             return PossibleValues(temp);
         }
 
+        public int[] ColumnPossibleValues(int row)
+        {
+            if (Data != null)
+            {
+                return Data.ColumnPossibleValues[row]?.ToArray() ?? new int[0];
+            }
+
+            var temp = new bool[Size];
+            for (var i = 0; i < Size; i++)
+            {
+                if (Matrix[row, i] == 0) continue;
+                if (temp[Matrix[row, i] - 1]) return new int[0];
+
+                temp[Matrix[row, i] - 1] = true;
+            }
+
+            return PossibleValues(temp);
+        }
+
         public int[] SectionPossibleValues(int section)
         {
+            if (Data != null)
+            {
+                return Data.SectionPossibleValues[section]?.ToArray() ?? new int[0];
+            }
+
             var temp = new bool[Size];
             var (rowStart, colStart) = GetSectionStart(section);
 
@@ -133,13 +196,13 @@ namespace Sudoku.Algorithm
         {
             if (this[row, col] != 0) return new int[] { this[row, col] };
 
-            var columnPossibleValues = ColumnPossibleValues(row);
             var rowPossibleValues = RowPossibleValues(col);
+            var columnPossibleValues = ColumnPossibleValues(row);
 
             var section = GetSection(row, col);
-            var sectionIPossibleValues = SectionPossibleValues(section);
+            var sectionPossibleValues = SectionPossibleValues(section);
 
-            var possibleValues = columnPossibleValues.Intersect(rowPossibleValues).Intersect(sectionIPossibleValues).ToArray();
+            var possibleValues = rowPossibleValues.Intersect(columnPossibleValues).Intersect(sectionPossibleValues).ToArray();
             return possibleValues;
         }
 
@@ -183,79 +246,28 @@ namespace Sudoku.Algorithm
         public Sudoku Simplify()
         {
             var sudoku = Clone();
-            var possibleValues = new List<int>[Size, Size];
-
-            bool SetValue(int row, int col, int value)
-            {
-                sudoku[row, col] = value;
-                possibleValues[row, col] = null;
-
-                for (int i = 0; i < Size; i++)
-                {
-                    if (possibleValues[i, col] == null) continue;
-
-                    possibleValues[i, col].Remove(value);
-                    if (possibleValues[i, col].Count == 0) return false;
-                }
-
-                for (int i = 0; i < Size; i++)
-                {
-                    if (possibleValues[row, i] == null) continue;
-
-                    possibleValues[row, i].Remove(value);
-                    if (possibleValues[row, i].Count == 0) return false;
-                }
-
-                var section = GetSection(row, col);
-                var point = GetSectionStart(section);
-                for (int i = point.row; i < point.row + Rows; i++)
-                {
-                    for (int j = point.col; j < point.col + Cols; j++)
-                    {
-                        if (possibleValues[i, j] == null) continue;
-
-                        possibleValues[i, j].Remove(value);
-                        if (possibleValues[i, j].Count == 0) return false;
-                    }
-                }
-
-                return true;
-            }
 
             bool Process(Sudoku sudoku)
             {
                 var again = false;
+
                 for (int i = 0; i < Size; i++)
                 {
                     for (int j = 0; j < Size; j++)
                     {
                         if (sudoku[i, j] > 0) continue;
 
-                        var values = possibleValues[i, j];
-                        if (values == null || values.Count == 0) return false;
-                        if (values.Count > 1) continue;
+                        var values = sudoku.PossibleValues(i, j);
+                        if (values == null || values.Length == 0) return false;
+                        if (values.Length > 1) continue;
 
-                        SetValue(i, j, values[0]);
+                        sudoku[i, j] = values[0];
                         again = true;
                     }
                 }
 
                 if (again) return Process(sudoku);
                 return true;
-            }
-
-            // initialize possible values
-            for (int i = 0; i < Size; i++)
-            {
-                for (int j = 0; j < Size; j++)
-                {
-                    if (sudoku[i, j] > 0) continue;
-
-                    var values = PossibleValues(i, j);
-                    if (values.Length == 0) return null;
-
-                    possibleValues[i, j] = values.ToList();
-                }
             }
 
             var valid = Process(sudoku);
