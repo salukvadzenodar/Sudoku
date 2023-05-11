@@ -1,7 +1,5 @@
-﻿using System;
-using System.Collections.Generic;
+﻿using System.Collections.Generic;
 using System.Linq;
-using System.Reflection;
 
 namespace Sudoku.Algorithm
 {
@@ -18,8 +16,9 @@ namespace Sudoku.Algorithm
         {
             get { return isOptimized; }
             set {
-                isOptimized = value;
+                if (isOptimized == value) return;
 
+                isOptimized = value;
                 if (isOptimized)
                 {
                     BuildData();
@@ -39,9 +38,9 @@ namespace Sudoku.Algorithm
             {
                 if (Data != null) return Data.Solved;
 
-                for (int i = 0; i < Size; i++)
+                for (var i = 0; i < Size; i++)
                 {
-                    for (int j = 0; j < Size; j++)
+                    for (var j = 0; j < Size; j++)
                     {
                         if (Matrix[i, j] == 0) return false;
                     }
@@ -61,7 +60,9 @@ namespace Sudoku.Algorithm
             }
             set
             {
-                var valueChanged = Matrix[i, j] != 0 && Matrix[i, j] != value;
+                if (Matrix[i, j] == value) return;
+
+                var valueChanged = Matrix[i, j] != 0;
                 Matrix[i, j] = value;
 
                 if (Data != null)
@@ -210,7 +211,7 @@ namespace Sudoku.Algorithm
                 {
                     if (Matrix[i, j] == 0) continue;
 
-                    var index = Matrix[i, i] - 1;
+                    var index = Matrix[i, j] - 1;
                     if (itemsFilled[index]) return new int[0];
 
                     itemsFilled[index] = true;
@@ -279,7 +280,7 @@ namespace Sudoku.Algorithm
                 sudoku[row, col] = value;
                 possibleValues[row, col] = null;
 
-                for (int i = 0; i < Size; i++)
+                for (var i = 0; i < Size; i++)
                 {
                     if (possibleValues[i, col] == null) continue;
 
@@ -287,7 +288,7 @@ namespace Sudoku.Algorithm
                     if (possibleValues[i, col].Count == 0) return false;
                 }
 
-                for (int i = 0; i < Size; i++)
+                for (var i = 0; i < Size; i++)
                 {
                     if (possibleValues[row, i] == null) continue;
 
@@ -297,9 +298,10 @@ namespace Sudoku.Algorithm
 
                 var section = GetSection(row, col);
                 var point = GetSectionStart(section);
-                for (int i = point.row; i < point.row + Rows; i++)
+
+                for (var i = point.row; i < point.row + Rows; i++)
                 {
-                    for (int j = point.col; j < point.col + Cols; j++)
+                    for (var j = point.col; j < point.col + Cols; j++)
                     {
                         if (possibleValues[i, j] == null) continue;
 
@@ -314,9 +316,9 @@ namespace Sudoku.Algorithm
             bool Process(Sudoku sudoku)
             {
                 var again = false;
-                for (int i = 0; i < Size; i++)
+                for (var i = 0; i < Size; i++)
                 {
-                    for (int j = 0; j < Size; j++)
+                    for (var j = 0; j < Size; j++)
                     {
                         if (sudoku[i, j] > 0) continue;
 
@@ -334,9 +336,9 @@ namespace Sudoku.Algorithm
             }
 
             // initialize possible values
-            for (int i = 0; i < Size; i++)
+            for (var i = 0; i < Size; i++)
             {
-                for (int j = 0; j < Size; j++)
+                for (var j = 0; j < Size; j++)
                 {
                     if (sudoku[i, j] > 0) continue;
 
@@ -360,9 +362,9 @@ namespace Sudoku.Algorithm
             {
                 var again = false;
 
-                for (int i = 0; i < Size; i++)
+                for (var i = 0; i < Size; i++)
                 {
-                    for (int j = 0; j < Size; j++)
+                    for (var j = 0; j < Size; j++)
                     {
                         if (sudoku[i, j] > 0) continue;
 
