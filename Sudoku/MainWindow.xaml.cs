@@ -267,13 +267,13 @@ namespace Sudoku
                 try
                 {
                     var startTime = DateTime.Now;
-                    var sudoku = await Algorithm.SudokuSolve.SolveAsync(initialSudoku, cancelationSource, (s, stackCount, isBack) =>
+                    var sudoku = await Algorithm.SudokuSolve.SolveAsync(initialSudoku, cancelationSource, (progress) =>
                     {
                         if (token.IsCancellationRequested) return;
 
                         Application.Current.Dispatcher.Invoke(() =>
                         {
-                            ShowSudoku(s);
+                            ShowSudoku(progress.Sudoku);
                         });
                     });
 

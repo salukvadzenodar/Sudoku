@@ -1,11 +1,9 @@
 ﻿using System;
 using System.Collections.Generic;
-using System.ComponentModel.DataAnnotations;
 using System.Diagnostics;
 using System.Linq;
 using System.Threading;
 using System.Threading.Tasks;
-using System.Timers;
 
 namespace Sudoku.Algorithm
 {
@@ -54,7 +52,7 @@ namespace Sudoku.Algorithm
             return null;
         }
 
-        private static bool Solve(Stack<SudokuContainer> stack, Action<Sudoku, int, bool> notify, long notifyTime, ref DateTime time)
+        private static bool Solve(Stack<SudokuContainer> stack, Action<SudokuProgress> notify, long notifyTime, ref DateTime time)
         {
             var item = stack.Peek();
 
@@ -69,7 +67,12 @@ namespace Sudoku.Algorithm
                 if (container == null && notify != null && (notifyTime == 0 || DateTime.Now.Subtract(time).TotalMilliseconds > notifyTime))
                 {
                     time = DateTime.Now;
-                    notify(stack.Peek().Next, stack.Count, true);
+                    notify(new SudokuProgress
+                    {
+                        Sudoku = stack.Peek().Next,
+                        Count = stack.Count,
+                        IsBack = true
+                    });
                 }
             }
 
@@ -77,13 +80,18 @@ namespace Sudoku.Algorithm
             if (notify != null && (notifyTime == 0 || DateTime.Now.Subtract(time).TotalMilliseconds > notifyTime))
             {
                 time = DateTime.Now;
-                notify(container.Next ?? container.Sudoku, stack.Count, false);
+                notify(new SudokuProgress
+                {
+                    Sudoku = container.Next ?? container.Sudoku,
+                    Count = stack.Count,
+                    IsBack = false
+                });
             }
 
             return container.Next == null;
         }
 
-        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<Sudoku, int, bool> notify = null, long notifyTime = 1000)
+        public static Sudoku Solve(Sudoku sudoku, CancellationToken token, Action<SudokuProgress> notify = null, long notifyTime = 1000)
         {
             var container = NewContainer(sudoku);
             if (container == null) return null;
@@ -103,19 +111,17 @@ namespace Sudoku.Algorithm
             return item.Sudoku.Solved ? item.Sudoku : null;
         }
 
-        public static async Task<Sudoku> SolveAsync(Sudoku sudoku, CancellationTokenSource tokenSource, Action<Sudoku, int, bool> notify = null, long notifyTime = 1000)
+        public static async Task<Sudoku> SolveAsync(Sudoku sudoku, CancellationTokenSource tokenSource, Action<SudokuProgress> notify = null, long notifyTime = 1000)
         {
             var concurentThreads = Process.GetCurrentProcess().Threads.Count / 2;
             var tasks = new List<Task<Sudoku>>();
 
             var timer = new System.Timers.Timer(notifyTime + 100);
 
-            Sudoku notificationobj = null;
-            int count = 0;
-            bool isBack = false;
+            SudokuProgress progress = null;
             aquired = true;
 
-            Action<Sudoku, int, bool> notifyFn = notify != null ? (s, c, b) =>
+            Action<SudokuProgress> notifyFn = notify != null ? (p) =>
             {
 
                 if (aquired) return;
@@ -125,9 +131,7 @@ namespace Sudoku.Algorithm
                     aquired = true;
                 }
 
-                notificationobj = s;
-                count = c;
-                isBack = b;
+                progress = p;
             } : null;
 
             sudoku = sudoku.Simplify();
@@ -175,10 +179,10 @@ namespace Sudoku.Algorithm
                         timer.Enabled = false;
                         return;
                     }
-                    if (notificationobj == null) return;
+                    if (progress == null) return;
 
-                    notify(notificationobj, count, isBack);
-                    notificationobj = null;
+                    notify(progress);
+                    progress = null;
                     aquired = false;
                 };
 
